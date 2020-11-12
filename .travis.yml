@@ -1,5 +1,5 @@
 language: go
-go_import_path: github.com/noho-digital/groupcache
+go_import_path: github.com/noho-digital/groupcache/v2
 
 os: linux
 dist: trusty

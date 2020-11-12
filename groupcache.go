@@ -36,6 +36,7 @@ import (
 	"github.com/noho-digital/groupcache/v2/lru"
 	"github.com/noho-digital/groupcache/v2/singleflight"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/multierr"
 )
 
 var logger *logrus.Entry
@@ -262,10 +263,9 @@ func (g *Group) Remove(ctx context.Context, key string) error {
 
 		// Remove from key owner first
 		owner, ok := g.peers.PickPeer(key)
+		var err error
 		if ok {
-			if err := g.removeFromPeer(ctx, owner, key); err != nil {
-				return nil, err
-			}
+			err = g.removeFromPeer(ctx, owner, key)
 		}
 		// Remove from our cache next
 		g.localRemove(key)
@@ -290,13 +290,11 @@ func (g *Group) Remove(ctx context.Context, key string) error {
 			close(errs)
 		}()
 
-		// TODO(thrawn01): Should we report all errors? Reporting context
-		//  cancelled error for each peer doesn't make much sense.
-		var err error
 		for e := range errs {
-			err = e
+			if e != nil {
+				err = multierr.Combine(err, e)
+			}
 		}
-
 		return nil, err
 	})
 	return err
